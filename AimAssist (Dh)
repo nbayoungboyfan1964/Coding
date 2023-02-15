@@ -1,0 +1,197 @@
+TOGGLE = ("Q")
+
+FOV_SIZE = 69 -- range from 60-100
+
+
+--Check if player is infront of you
+--Percentage System
+
+
+
+
+
+
+
+
+
+--//    Vars   \\--
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+local worldToViewportPoint = Camera.worldToViewportPoint
+local Players = game:GetService("Players")
+local UserInputService = game:GetService('UserInputService')
+local RunService = game:GetService('RunService')
+
+
+Connections = {
+    ["TargetCharAdded"] = nil
+}
+Hidden = {}
+SelectedTarget = nil
+Locking = false
+
+
+
+--//        Functions        \\--
+local function getClosestPlayerToCursor()
+        local closestPlayer
+        local shortestDistance = 65
+ 
+        for i, v in pairs(game.Players:GetPlayers()) do
+            if  v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health ~= 0 and v.Character:FindFirstChild("HumanoidRootPart") then
+                local pos = Camera:WorldToViewportPoint(v.Character.PrimaryPart.Position)
+                local magnitude = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).magnitude
+                if magnitude < shortestDistance then
+                    closestPlayer = v
+                    shortestDistance = magnitude
+                end
+            end
+        end
+    return closestPlayer
+end
+
+local function Disconnect(connection)
+    if connection then
+        connection:Disconnect()
+    end
+end
+
+local function HighlightEnemy()
+print(SelectedTarget)
+local highlight = Instance.new("Highlight");highlight.Name = "ddX"
+highlight.Adornee = SelectedTarget.Character
+highlight.Parent = SelectedTarget.Character
+highlight.OutlineTransparency = .5
+table.insert(Hidden,highlight)
+end
+
+local function SendNotif(t,tx)
+    game.StarterGui:SetCore("SendNotification", {Title = t,Text = tx,Duration = 2,})
+end
+
+
+local function keyclicked(i,g)
+    if i.KeyCode == Enum.KeyCode[TOGGLE] and not g then
+        Locking = not Locking
+        
+        if Locking then
+            local ClosestPerson = getClosestPlayerToCursor()
+            if ClosestPerson == nil then
+                return
+            end
+            SelectedTarget = ClosestPerson
+            HighlightEnemy(SelectedTarget)
+            SendNotif("Locked On:",SelectedTarget.Name)
+            
+            Connections["TargetCharAdded"] = SelectedTarget.CharacterAdded:connect(function(EnemeyNewChar)
+                repeat task.wait(1) until EnemeyNewChar:FindFirstChild("HumanoidRootPart") 
+                HighlightEnemy()
+            end)
+        end
+        
+        if not Locking then
+            SendNotif("Unlocked","")
+            Disconnect(Connections["TargetCharAdded"])
+            for i,v in next,Hidden do
+                v:Destroy()
+            end
+            SelectedTarget = nil
+        end
+        
+    end
+end
+UserInputService.InputBegan:connect(keyclicked)
+
+--//   Script   \\--
+SendNotif("Blatant - Aim Assist","")
+
+
+Players.PlayerRemoving:connect(function(Plr)
+    if Plr == SelectedTarget then
+        SendNotif("Target Logged")
+        Disconnect(Connections["TargetCharAdded"])
+        for i,v in next,Hidden do
+            v:Destroy()
+        end
+        SelectedTarget = nil
+        Locking = false
+    end
+end)
+
+
+local FOV_CIRCLE = Drawing.new("Circle")
+FOV_CIRCLE.Visible = true
+FOV_CIRCLE.Filled = false
+FOV_CIRCLE.Thickness = 0
+FOV_CIRCLE.Transparency = 1
+FOV_CIRCLE.Color = Color3.new(255, 0, 0)
+FOV_CIRCLE.Radius = FOV_SIZE
+FOV_CIRCLE.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+local Tracer = Drawing.new("Line")
+Tracer.Visible = false
+Tracer.Color = Color3.new(255,0,0)
+Tracer.Thickness = 1
+Tracer.Transparency = 1
+RunService.RenderStepped:connect(function()
+FOV_CIRCLE.Position = Vector2.new(Mouse.X, (Mouse.Y + 36))
+if SelectedTarget ~= nil and SelectedTarget.Character ~= nil and SelectedTarget.Character:FindFirstChild("Humanoid") ~= nil and SelectedTarget.Character:FindFirstChild("HumanoidRootPart") ~= nil and SelectedTarget ~= LocalPlayer then
+    local Vector, OnScreen = Camera:worldToViewportPoint(SelectedTarget.Character.HumanoidRootPart.Position or SelectedTarget.Character.UpperTorso.Position)
+    if OnScreen then
+        Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1)
+        Tracer.To = Vector2.new(Vector.X, Vector.Y)
+        Tracer.Visible = true
+        FOV_CIRCLE.Visible = true
+    else
+        Tracer.Visible = false
+        --FOV_CIRCLE.Visible = false
+    end
+    else
+        Tracer.Visible = false
+        FOV_CIRCLE.Visible = false   
+    end
+end)
+
+
+local PrimaryPart = "HumanoidRootPart"
+local Hitpoints = {"HumanoidRootPart","Head","Left Upper Arm","Right Lower Arm","Left Upper Leg","Right Upper Leg"}
+
+
+local oldIndex = nil 
+oldIndex = hookmetamethod(game, "__index", function(self, Index)
+    if self == Mouse and (Index == "Hit") then 
+        local Distance = 9e9
+        local Targete = nil
+        if SelectedTarget~= nil then
+            for _, v in pairs(Players:GetPlayers()) do 
+                if v ~= LocalPlayer and v == SelectedTarget and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("Humanoid").Health > 0 then
+                    local Enemy = v.Character	
+                        local RootPartPosition, Visible = Camera:WorldToScreenPoint(Enemy[PrimaryPart].Position)
+                        if Visible then
+                            local Real_Magnitude = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(RootPartPosition.X, RootPartPosition.Y)).Magnitude
+                        if Real_Magnitude < Distance and Real_Magnitude < FOV_CIRCLE.Radius then
+                            Distance = Real_Magnitude
+                            Targete = Enemy
+                        end
+                    end
+                end
+            end
+        end
+        
+    
+        if Targete ~= nil and Targete[PrimaryPart] and Targete.Name ~= "xSyn2x" then
+            --if Locking then
+                local chosenPart = Hitpoints[math.random(1, #Hitpoints)]
+                if not Targete:FindFirstChild(chosenPart) then
+                    chosenPart = "HumanoidRootPart"
+                end
+                local ShootThis = Targete[PrimaryPart] -- or Options.Head
+                local Predicted_Position = ShootThis.CFrame + (ShootThis.Velocity * .18 + Vector3.new(0,-1,0)) --  (-1) = Less blatant
+                warn(Predicted_Position)
+                return ((Index == "Hit" and Predicted_Position))
+            --end
+        end
+
+    end
+    return oldIndex(self, Index)
+end)
