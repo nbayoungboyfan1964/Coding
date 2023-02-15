@@ -1,6 +1,6 @@
 TOGGLE = ("Q")
 
-FOV_SIZE = 68 -- range from 60-100
+FOV_SIZE = 60 -- range from 60-100
 
 
 --Check if player is infront of you
