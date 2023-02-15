@@ -1,6 +1,6 @@
 TOGGLE = ("Q")
 
-FOV_SIZE = 69 -- range from 60-100
+FOV_SIZE = 68 -- range from 60-100
 
 
 --Check if player is infront of you
@@ -78,6 +78,7 @@ local function keyclicked(i,g)
         if Locking then
             local ClosestPerson = getClosestPlayerToCursor()
             if ClosestPerson == nil then
+                Locking = false
                 return
             end
             SelectedTarget = ClosestPerson
